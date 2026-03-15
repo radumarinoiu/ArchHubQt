@@ -25,11 +25,11 @@ QPushButton.QPageButton:pressed, QPushButton.QPageButton:checked {
 """
 SUB_PAGE_BUTTON_STYLE = """
 QPushButton.QSubPageButton { 
-    font-size: 14px;
+    font-size: 16px;
     text-align: left;
     margin: 2px;
     margin-left: 16px;
-    padding: 4px;
+    padding: 4px 8px;
     border: 1px solid transparent;
     border-radius: 8px;
 }
