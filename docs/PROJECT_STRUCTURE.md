@@ -32,7 +32,7 @@ ArchHubQt/
 │       └── core/                   # Shared, testable low-level code
 │           ├── __init__.py
 │           ├── runner.py          # Subprocess runner (timeout, env, result)
-│           ├── models.py           # Package, Repo, OperationResult dataclasses
+│           ├── models.py           # Package, Repo, OperationResult (Pydantic models)
 │           └── parsing/
 │               ├── __init__.py
 │               ├── pacman.py
@@ -71,7 +71,7 @@ ArchHubQt/
 | QML views, components, pages | `src/archhub/ui/qml/` |
 | High-level install/remove/search, job state | `src/archhub/services/` |
 | Pacman / paru / other helper implementations | `src/archhub/backends/` |
-| Subprocess runner, dataclasses, output parsers | `src/archhub/core/` |
+| Subprocess runner, Pydantic models, output parsers | `src/archhub/core/` |
 | Unit tests for a module | `tests/unit/<package>/` |
 | AUR PKGBUILD and install script | `packaging/aur/` |
 
