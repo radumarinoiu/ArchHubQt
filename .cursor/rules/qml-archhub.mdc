@@ -1,0 +1,18 @@
+---
+description: QML standards for package manager views and interaction flows
+globs: **/*.qml
+alwaysApply: false
+---
+
+# QML Rules
+
+- Keep QML focused on presentation, interaction, and binding. Do not put package-manager business logic or command construction in QML.
+- Bind QML to Python-exposed models, properties, and invokable methods through stable view-model style APIs.
+- Prefer unidirectional flow: user action in QML -> Python service/view-model -> state update -> QML reflects new state.
+- Represent package operations with explicit states such as idle, loading, running, success, failed, and requires-confirmation.
+- Design for long-running work: show progress, disable conflicting actions, and make cancellation/retry paths obvious.
+- Surface risky actions clearly in the UI, especially remove, downgrade, orphan cleanup, cache cleanup, and AUR build/install actions.
+- Keep reusable UI pieces modular: package list item, search/filter controls, package details, operation log, and confirmation dialog should be separate components when practical.
+- Avoid imperative JavaScript in QML except for tiny view-only glue. If logic becomes non-trivial, move it to Python.
+- Use property bindings and models instead of manually synchronizing UI state across components.
+- When adding new screens, preserve a clear distinction between official repo packages and AUR packages, including backend source and operation constraints.

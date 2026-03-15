@@ -1,0 +1,19 @@
+---
+description: Core project guidance for an Arch Linux Qt package manager
+alwaysApply: true
+---
+
+# ArchHubQt General Rules
+
+For directory layout, where to add code, and AUR packaging, see **docs/PROJECT_STRUCTURE.md**.
+
+- Build for Arch Linux first. Prefer `pacman` for repo packages and `paru` as the first AUR helper, but keep AUR support behind a helper adapter so more helpers can be added later.
+- Keep package operations split into layers: UI, application/service logic, package manager adapters, and system command execution.
+- Do not hardcode `paru` behavior directly into UI code. UI should talk to a neutral package service API.
+- Treat package operations as stateful jobs with progress, cancellation, exit status, and structured stderr/stdout handling.
+- Default to safe behavior. Never silently remove packages, overwrite configs, or run destructive commands without explicit user confirmation.
+- Assume some operations need elevation. Keep privilege boundaries clear and centralize any sudo/pkexec integration.
+- Prefer machine-readable command output when available. Parse text output defensively and surface failures clearly.
+- Keep implementation testable: business logic and command parsing should be isolated from Qt widgets/QML views.
+- Prefer incremental support: `pacman` + `paru` first, then add helpers through the same adapter contract instead of branching code paths everywhere.
+- When proposing architecture or code, optimize for reliability on real Arch systems over abstraction for its own sake.

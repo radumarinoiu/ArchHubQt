@@ -1,0 +1,28 @@
+# AUR PKGBUILD stub. Adjust pkgname, source, and install to match your repo.
+# Install QML to /usr/share/archhub/qml and the Python package under /usr.
+
+pkgname=archhubqt
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Arch Linux package manager (Qt) with pacman and AUR helper support"
+arch=('any')
+url="https://github.com/yourusername/ArchHubQt"
+license=('GPL3')
+depends=('python-pyside6' 'pacman')
+optdepends=('paru: AUR support')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+source=()
+sha256sums=()
+
+build() {
+  cd "$srcdir/../.."
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$srcdir/../.."
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  # Optional: install QML to /usr/share/archhub/qml
+  # install -dm755 "$pkgdir/usr/share/archhub/qml"
+  # cp -a src/archhub/ui/qml/* "$pkgdir/usr/share/archhub/qml/"
+}

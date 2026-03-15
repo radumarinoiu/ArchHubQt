@@ -1,0 +1,12 @@
+---
+description: Where to add new code and how the project is laid out
+alwaysApply: true
+---
+
+# Project structure
+
+- Follow the layout in **docs/PROJECT_STRUCTURE.md**: `src/archhub/` (app, ui, services, backends, core), `tests/unit/` mirroring packages, `packaging/aur/` for AUR.
+- New package-manager or AUR helper: add a module under `backends/` implementing the interface in `backends/base.py`, plus parsers under `core/parsing/` if needed; register in `backends/__init__.py`. Add unit tests under `tests/unit/backends/` and `tests/unit/core/parsing/`.
+- New UI screen or flow: QML under `src/archhub/ui/qml/` (components or pages); orchestration in `services/`; no business logic in QML.
+- New shared types or runner behavior: `core/models.py` or `core/runner.py`; keep core free of Qt and easy to unit test.
+- AUR packaging: keep install paths and script entry point consistent with `packaging/aur/PKGBUILD` and `pyproject.toml` `[project.scripts]`.

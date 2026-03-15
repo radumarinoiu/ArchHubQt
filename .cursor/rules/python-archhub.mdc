@@ -1,0 +1,18 @@
+---
+description: Python standards for backend, services, and Qt integration
+globs: **/*.py
+alwaysApply: false
+---
+
+# Python Rules
+
+- Prefer `PySide6` for Qt integration unless the project explicitly chooses another Python Qt binding.
+- Use Python to own business logic, package operations, command execution, parsing, persistence, and view-model state exposed to QML.
+- Add type hints to new or edited public functions, dataclasses, and service interfaces.
+- Model package manager behavior with explicit interfaces or base classes such as `PackageBackend`, `AurHelperBackend`, or `CommandRunner`.
+- Wrap subprocess calls in a dedicated runner with timeout, environment control, exit-code handling, and structured results. Do not scatter raw `subprocess` calls across the codebase.
+- Never build shell commands by string concatenation when argument lists can be passed directly.
+- Parse `pacman` and helper output in focused parser functions or classes with tests for realistic command samples.
+- Keep Qt signal-slot or property glue thin. Put non-UI logic in plain Python classes that are easy to unit test.
+- Prefer async or non-blocking process handling for long-running package operations so the UI stays responsive.
+- Log actionable failures with enough context to debug command, backend, and parsing issues, but avoid leaking secrets or full privileged prompts.
