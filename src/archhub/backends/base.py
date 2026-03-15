@@ -6,9 +6,10 @@ so adding a new helper is just implementing this interface.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import List, Optional
 
+from archhub.core.aur_rpc import get_package_info
 from archhub.core.models import (
     CacheStats,
     OrphanEntry,
@@ -16,20 +17,21 @@ from archhub.core.models import (
     PackageSummary,
     UpdateEntry,
 )
+from tools.performance_tools import log_duration
 
 
-class PackageBackend(ABC):
-    """Abstract backend for repo/sync operations (pacman)."""
+class PackageBackend(metaclass=ABCMeta):
+    """Abstract backend for package manager operations. (Common for repo and AUR helpers.)"""
 
     @property
     @abstractmethod
     def id(self) -> str:
-        """Backend identifier, e.g. 'pacman'."""
+        """Backend identifier, e.g. 'pacman' or 'paru'."""
         ...
 
     @abstractmethod
     def get_installed(self) -> List[PackageSummary]:
-        """Return all installed packages from sync repos (no AUR)."""
+        """Return all installed packages."""
         ...
 
     @abstractmethod
@@ -38,56 +40,44 @@ class PackageBackend(ABC):
         ...
 
     @abstractmethod
-    def get_repo_updates(self) -> List[UpdateEntry]:
-        """Return list of repo packages that have updates available."""
+    def get_updates(self) -> List[UpdateEntry]:
+        """Return list of packages that have updates available."""
         ...
+
+    # TODO: Implement this later as it's a bit more complex to implement
+    # @abstractmethod
+    # def get_cache_stats(self) -> CacheStats:
+    #     """Return cache directory statistics."""
+    #     ...
+
+    @abstractmethod
+    def search(self, query: str) -> List[PackageSummary]:
+        """Search database; returns package summaries."""
+        ...
+
+
+class RepoBackend(PackageBackend, metaclass=ABCMeta):
+    """Abstract backend for repo/sync operations (pacman)."""
 
     @abstractmethod
     def get_orphans(self) -> List[OrphanEntry]:
         """Return orphaned (unrequired) packages."""
         ...
 
-    @abstractmethod
-    def get_cache_stats(self) -> CacheStats:
-        """Return cache directory statistics."""
-        ...
 
-    @abstractmethod
-    def search_repo(self, query: str) -> List[PackageSummary]:
-        """Search sync database; returns package summaries (for 'search packages' in repo)."""
-        ...
-
-
-class AurHelperBackend(ABC):
+class AurHelperBackend(PackageBackend, metaclass=ABCMeta):
     """Abstract backend for AUR helper (paru, yay, etc.)."""
 
-    @property
-    @abstractmethod
-    def id(self) -> str:
-        """Helper identifier, e.g. 'paru'."""
-        ...
+    @log_duration()
+    def get_package_details(self, name: str) -> Optional[PackageDetails]:
+        return get_package_info(name)
 
     @abstractmethod
     def is_available(self) -> bool:
         """Return True if the helper binary is installed and usable."""
         ...
-
+    
     @abstractmethod
-    def get_aur_installed(self) -> List[PackageSummary]:
-        """Return installed packages that come from AUR."""
-        ...
-
-    @abstractmethod
-    def get_all_updates(self) -> List[UpdateEntry]:
-        """Return repo + AUR updates (e.g. paru -Qu)."""
-        ...
-
-    @abstractmethod
-    def search_aur(self, query: str) -> List[PackageSummary]:
-        """Search AUR; returns package summaries."""
-        ...
-
-    @abstractmethod
-    def get_package_details(self, name: str) -> Optional[PackageDetails]:
-        """Return full details for an AUR-installed package, or None."""
+    def get_package_comments(self, name: str) -> List[str]:
+        """Return comments for a package."""
         ...

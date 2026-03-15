@@ -11,11 +11,8 @@ from archhub.core.models import (
     UpdateEntry,
 )
 
-# Reuse pacman-style line for installed/updates
-from archhub.core.parsing.pacman import (
-    LINE_RE,
-    parse_details as _pacman_parse_details,
-)
+from archhub.core.parsing.pacman import LINE_RE
+from archhub.core.parsing.pkgbuild import parse_pkgbuild
 
 
 def parse_aur_installed(stdout: str) -> List[PackageSummary]:
@@ -77,6 +74,6 @@ def parse_aur_search(stdout: str) -> List[PackageSummary]:
     return result
 
 
-def parse_details(stdout: str) -> Optional[PackageDetails]:
-    """Parse 'paru -Qi name' for AUR package details (same block format as pacman)."""
-    return _pacman_parse_details(stdout, source=PackageSource.AUR)
+def parse_details(pkgbuild_content: str) -> Optional[PackageDetails]:
+    """Parse PKGBUILD content (no execution/sourcing) into PackageDetails for AUR."""
+    return parse_pkgbuild(pkgbuild_content, source=PackageSource.AUR)

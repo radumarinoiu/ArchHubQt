@@ -37,12 +37,23 @@ core/pacman 6.1.0-1
     assert r[0].source == PackageSource.AUR
 
 
-def test_parse_details_delegates_to_pacman():
-    out = """Name            : foo
-Version         : 1.0-1
-Description     : AUR package
+def test_parse_details_parses_pkgbuild():
+    pkgbuild = """
+# Maintainer: Someone <someone@archlinux.org>
+pkgname=foo
+pkgver=1.0
+pkgrel=2
+pkgdesc="AUR package"
+depends=(bash glibc)
+optdepends=('python: for scripts')
+conflicts=(foo-legacy)
 """
-    r = paru_parsing.parse_details(out)
+    r = paru_parsing.parse_details(pkgbuild)
     assert r is not None
     assert r.name == "foo"
+    assert r.version == "1.0-2"
+    assert r.description == "AUR package"
     assert r.source == PackageSource.AUR
+    assert r.dependencies == ["bash", "glibc"]
+    assert r.optional_deps == ["python: for scripts"]
+    assert r.conflicts == ["foo-legacy"]

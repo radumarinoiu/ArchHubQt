@@ -63,7 +63,9 @@ class CacheStats(BaseModel):
     total_size_bytes: int = 0
     package_count: int = 0
     old_versions_count: int = 0
+    old_versions_size_bytes: int = 0
     uninstalled_count: int = 0
+    uninstalled_size_bytes: int = 0
 
 
 class HelperSettings(BaseModel):
