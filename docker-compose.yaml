@@ -9,6 +9,7 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - /app/.venv
     stdin_open: true
     tty: true
     command: ["uv", "run", "python", "-m", "archhub.cli"]

@@ -1,10 +1,19 @@
-"""Qt view-models and list models for QML binding."""
+"""Qt view-models and list models for QtWidgets binding."""
 
 from __future__ import annotations
 
 from typing import Any, List, Optional
 
-from PySide6.QtCore import QAbstractListModel, QObject, QModelIndex, Qt, Signal, Property, Slot
+from PySide6.QtCore import (
+    QAbstractListModel,
+    QObject,
+    QModelIndex,
+    Qt,
+    Signal,
+    Property,
+    Slot,
+    QThread,
+)
 
 from archhub.backends import BackendRegistry
 from archhub.core.cache_repository import CacheRepository
@@ -16,6 +25,7 @@ from archhub.core.models import (
     PackageSummary,
     UpdateEntry,
 )
+from archhub.app.ui_loader import UiLoader
 from archhub.services.maintenance_service import MaintenanceService
 from archhub.services.package_service import PackageService
 from archhub.services.settings_service import SettingsService
@@ -46,6 +56,8 @@ class PackageListModel(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < len(self._packages)):
             return None
         p = self._packages[index.row()]
+        if role == Qt.DisplayRole:
+            return f"{p.name}  {p.version}"
         if role == PackageListModel.NameRole:
             return p.name
         if role == PackageListModel.VersionRole:
@@ -87,6 +99,8 @@ class UpdateListModel(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < len(self._updates)):
             return None
         u = self._updates[index.row()]
+        if role == Qt.DisplayRole:
+            return f"{u.name}  {u.current_version} → {u.new_version}"
         if role == UpdateListModel.NameRole:
             return u.name
         if role == UpdateListModel.CurrentVersionRole:
@@ -126,6 +140,8 @@ class OrphanListModel(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < len(self._orphans)):
             return None
         o = self._orphans[index.row()]
+        if role == Qt.DisplayRole:
+            return f"{o.name}  {o.version}"
         if role == OrphanListModel.NameRole:
             return o.name
         if role == OrphanListModel.VersionRole:
@@ -156,7 +172,7 @@ class StringListModel(QAbstractListModel):
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> Any:
         if not index.isValid() or not (0 <= index.row() < len(self._items)):
             return None
-        if role == StringListModel.TextRole:
+        if role == Qt.DisplayRole or role == StringListModel.TextRole:
             return self._items[index.row()]
         return None
 
@@ -168,6 +184,15 @@ class StringListModel(QAbstractListModel):
 
 class AppViewModel(QObject):
     """Main view-model: sidebar counters, package/updates/orphans models, settings."""
+
+    # Emitted to request background load (connected to UiLoader in worker thread)
+    requestLoadInstalled = Signal(str)
+    requestLoadSearch = Signal(str, bool)
+    requestLoadDetails = Signal(str)
+    requestLoadUpdates = Signal(bool)
+    requestLoadOrphans = Signal()
+    requestLoadCounts = Signal()
+    requestCacheStats = Signal()
 
     def __init__(
         self,
@@ -204,6 +229,105 @@ class AppViewModel(QObject):
         self._search_query: str = ""
         self._package_filter: str = "all"  # "all" | "pacman" | "aur"
 
+        # Background loader (runs in worker thread)
+        self._loader = UiLoader(
+            self._package_service,
+            self._updates_service,
+            self._maintenance_service,
+        )
+        self._loader_thread = QThread(self)
+        self._loader.moveToThread(self._loader_thread)
+        self._loader_thread.start()
+        queued = Qt.ConnectionType.QueuedConnection
+        self._loader.installedReady.connect(self._on_installed_ready, queued)
+        self._loader.searchReady.connect(self._on_search_ready, queued)
+        self._loader.detailsReady.connect(self._on_details_ready, queued)
+        self._loader.updatesReady.connect(self._on_updates_ready, queued)
+        self._loader.orphansReady.connect(self._on_orphans_ready, queued)
+        self._loader.countsReady.connect(self._on_counts_ready, queued)
+        self._loader.cacheStatsReady.connect(self._on_cache_stats_ready, queued)
+        self._loader.loadError.connect(self._on_load_error, queued)
+        # Request signals (emitted from main thread -> loader runs in worker thread)
+        self.requestLoadInstalled.connect(self._loader.load_installed, queued)
+        self.requestLoadSearch.connect(self._loader.load_search, queued)
+        self.requestLoadDetails.connect(self._loader.load_details, queued)
+        self.requestLoadUpdates.connect(self._loader.load_updates, queued)
+        self.requestLoadOrphans.connect(self._loader.load_orphans, queued)
+        self.requestLoadCounts.connect(self._loader.load_counts, queued)
+        self.requestCacheStats.connect(self._loader.load_cache_stats, queued)
+        self.destroyed.connect(self._on_destroyed)
+
+    def _on_destroyed(self) -> None:
+        if self._loader_thread.isRunning():
+            self._loader_thread.quit()
+            self._loader_thread.wait(2000)
+
+    def _on_installed_ready(self, packages: List[PackageSummary]) -> None:
+        self._package_model.setPackages(packages)
+        self.setLoading(False)
+
+    def _on_search_ready(self, packages: List[PackageSummary]) -> None:
+        self._package_model.setPackages(packages)
+        self.setLoading(False)
+
+    def _on_details_ready(self, details: Optional[PackageDetails]) -> None:
+        self._package_details = details
+        if details:
+            self._deps_model.setItems(details.dependencies)
+            self._optional_deps_model.setItems(details.optional_deps)
+            self._conflicts_model.setItems(details.conflicts)
+        else:
+            self._deps_model.setItems([])
+            self._optional_deps_model.setItems([])
+            self._conflicts_model.setItems([])
+        self._emitDetailsChanged()
+        self.depsModelChanged.emit()
+        self.optionalDepsModelChanged.emit()
+        self.conflictsModelChanged.emit()
+
+    def _on_updates_ready(self, updates: List[UpdateEntry]) -> None:
+        self._update_model.setUpdates(updates)
+        self.setUpdatesCount(len(updates))
+
+    def _on_orphans_ready(self, orphans: List[OrphanEntry]) -> None:
+        self._orphan_model.setOrphans(orphans)
+
+    def _on_counts_ready(self, total: int, aur: int, updates: int) -> None:
+        self.setTotalPackages(total)
+        self.setAurPackages(aur)
+        self.setUpdatesCount(updates)
+
+    def _on_cache_stats_ready(self, stats: CacheStats) -> None:
+        self._cache_stats = stats
+        self.cacheStatsChanged.emit()
+
+    def _on_load_error(self, message: str) -> None:
+        self.setErrorMessage(message)
+        self.setLoading(False)
+        self._package_model.setPackages([])
+
+    def _request_load_installed(self) -> None:
+        self.requestLoadInstalled.emit(self._package_filter)
+
+    def _request_load_search(self) -> None:
+        include_aur = self._registry.get_enabled_aur_helper() is not None
+        self.requestLoadSearch.emit(self._search_query, include_aur)
+
+    def _request_load_details(self, name: str) -> None:
+        self.requestLoadDetails.emit(name)
+
+    def _request_load_updates(self) -> None:
+        self.requestLoadUpdates.emit(self._updates_include_aur)
+
+    def _request_load_orphans(self) -> None:
+        self.requestLoadOrphans.emit()
+
+    def _request_load_counts(self) -> None:
+        self.requestLoadCounts.emit()
+
+    def _request_cache_stats(self) -> None:
+        self.requestCacheStats.emit()
+
     # --- Counts (for sidebar) ---
     def getTotalPackages(self) -> int:
         return self._total_packages
@@ -238,7 +362,7 @@ class AppViewModel(QObject):
     updatesCountChanged = Signal()
     updatesCount = Property(int, getUpdatesCount, setUpdatesCount, notify=updatesCountChanged)
 
-    # --- Models (Qt Property so QML ListView can use them) ---
+    # --- Models (Qt Property for UI binding) ---
     packageModelChanged = Signal()
     updateModelChanged = Signal()
     orphanModelChanged = Signal()
@@ -407,19 +531,7 @@ class AppViewModel(QObject):
             self.optionalDepsModelChanged.emit()
             self.conflictsModelChanged.emit()
             return
-        self._package_details = self._package_service.get_package_details(name)
-        if self._package_details:
-            self._deps_model.setItems(self._package_details.dependencies)
-            self._optional_deps_model.setItems(self._package_details.optional_deps)
-            self._conflicts_model.setItems(self._package_details.conflicts)
-        else:
-            self._deps_model.setItems([])
-            self._optional_deps_model.setItems([])
-            self._conflicts_model.setItems([])
-        self._emitDetailsChanged()
-        self.depsModelChanged.emit()
-        self.optionalDepsModelChanged.emit()
-        self.conflictsModelChanged.emit()
+        self._request_load_details(name)
 
     # --- Updates toggle ---
     def getUpdatesIncludeAur(self) -> bool:
@@ -484,6 +596,7 @@ class AppViewModel(QObject):
 
     errorMessageChanged = Signal()
     errorMessage = Property(str, getErrorMessage, setErrorMessage, notify=errorMessageChanged)
+    cacheStatsChanged = Signal()
 
     # --- Settings: helper enabled ---
     @Slot(str, result=bool)
@@ -509,39 +622,19 @@ class AppViewModel(QObject):
         """Return list of AUR helper ids for settings UI."""
         return [h.id for h in self._settings_service.get_available_helpers()]
 
-    # --- Refresh methods (call from QML or on load) ---
+    # --- Refresh methods (request background load; results arrive via loader signals) ---
     @Slot()
     def refreshCounts(self) -> None:
-        all_pkgs = self._package_service.get_installed_all()
-        aur_pkgs = self._package_service.get_installed_aur()
-        updates = self._updates_service.get_all_updates()
-        self.setTotalPackages(len(all_pkgs))
-        self.setAurPackages(len(aur_pkgs))
-        self.setUpdatesCount(len(updates))
+        self._request_load_counts()
 
     @Slot()
     def refreshPackageList(self) -> None:
         self.setLoading(True)
         self.setErrorMessage("")
-        try:
-            if self._search_query.strip():
-                include_aur = self._registry.get_enabled_aur_helper() is not None
-                packages = self._package_service.search(self._search_query, include_aur=include_aur)
-                # Filter by installed if we want only installed search results; for now show search
-                self._package_model.setPackages(packages)
-            else:
-                source = None
-                if self._package_filter == "aur":
-                    source = PackageSource.AUR
-                elif self._package_filter == "pacman":
-                    source = PackageSource.REPO
-                packages = self._package_service.get_installed(filter_source=source)
-                self._package_model.setPackages(packages)
-        except Exception as e:
-            self.setErrorMessage(str(e))
-            self._package_model.setPackages([])
-        finally:
-            self.setLoading(False)
+        if self._search_query.strip():
+            self._request_load_search()
+        else:
+            self._request_load_installed()
 
     @Slot()
     def refreshInstalledCache(self) -> None:
@@ -553,28 +646,25 @@ class AppViewModel(QObject):
             if aur:
                 self._cache_repo.invalidate_updates(aur.id)
         self.refreshPackageList()
-        self.refreshUpdatesList()
-        self.refreshCounts()
+        self._request_load_updates()
+        self._request_load_counts()
 
     @Slot()
     def refreshUpdatesList(self) -> None:
-        updates = self._updates_service.get_updates(self._updates_include_aur)
-        self._update_model.setUpdates(updates)
-        self.setUpdatesCount(len(updates))
+        self._request_load_updates()
 
     @Slot()
     def refreshOrphans(self) -> None:
-        orphans = self._maintenance_service.get_orphans()
-        self._orphan_model.setOrphans(orphans)
+        self._request_load_orphans()
 
     @Slot()
     def refreshCacheStats(self) -> None:
-        self._cache_stats = self._maintenance_service.get_cache_stats()
+        self._request_cache_stats()
 
     @Slot()
     def refreshAll(self) -> None:
-        self.refreshCounts()
+        self._request_load_counts()
         self.refreshPackageList()
-        self.refreshUpdatesList()
-        self.refreshOrphans()
-        self.refreshCacheStats()
+        self._request_load_updates()
+        self._request_load_orphans()
+        self._request_cache_stats()

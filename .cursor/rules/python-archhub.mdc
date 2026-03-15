@@ -7,7 +7,7 @@ alwaysApply: false
 # Python Rules
 
 - Prefer `PySide6` for Qt integration unless the project explicitly chooses another Python Qt binding.
-- Use Python to own business logic, package operations, command execution, parsing, persistence, and view-model state exposed to QML.
+- Use Python to own business logic, package operations, command execution, parsing, persistence, and view-model state exposed to the QtWidgets UI.
 - Add type hints to new or edited public functions, Pydantic models, and service interfaces.
 - Model package manager behavior with explicit interfaces or base classes such as `PackageBackend`, `AurHelperBackend`, or `CommandRunner`.
 - Wrap subprocess calls in a dedicated runner with timeout, environment control, exit-code handling, and structured results. Do not scatter raw `subprocess` calls across the codebase.

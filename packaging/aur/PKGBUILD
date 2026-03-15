@@ -1,4 +1,4 @@
-# AUR PKGBUILD. Install QML to /usr/share/archhub/qml and the Python package under /usr.
+# AUR PKGBUILD. Python package (QtWidgets UI) installs under /usr.
 
 pkgname=archhubqt
 pkgver=0.1.0
@@ -21,8 +21,4 @@ build() {
 package() {
   cd "$srcdir/../.."
   python -m installer --destdir="$pkgdir" dist/*.whl
-
-  # QML and assets to stable path so the app finds them when installed
-  install -dm755 "$pkgdir/usr/share/archhub/qml"
-  cp -a src/archhub/ui/qml/* "$pkgdir/usr/share/archhub/qml/"
 }

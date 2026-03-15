@@ -1,6 +1,6 @@
 # ArchHubQt
 
-Arch Linux package manager GUI (Qt/QML) with pacman and AUR helper support.
+Arch Linux package manager GUI (Qt/QtWidgets) with pacman and AUR helper support.
 
 ## Development
 

@@ -9,16 +9,16 @@ ArchHubQt/
 ├── src/
 │   └── archhub/                    # Main Python package (installable)
 │       ├── __init__.py
-│       ├── main.py                 # Entry point (Qt app, QML engine)
-│       ├── app/                    # Qt application and window setup
+│       ├── main.py                 # Entry point (Qt app, QtWidgets)
+│       ├── app/                    # View-models, controllers, UI loader
 │       │   ├── __init__.py
+│       │   ├── viewmodel.py
+│       │   ├── ui_loader.py
 │       │   └── ...
-│       ├── ui/                     # QML and static assets
-│       │   ├── qml/
-│       │   │   ├── main.qml
-│       │   │   ├── components/
-│       │   │   └── pages/
-│       │   └── (optional resources)
+│       ├── ui/                     # QtWidgets UI (Python)
+│       │   ├── main_window.py
+│       │   ├── pages/              # Packages, Updates, Orphans, Cache, Settings, Mirrors
+│       │   └── widgets/           # Reusable widgets (sidebar, details pane, etc.)
 │       ├── services/               # Application services (orchestration)
 │       │   ├── __init__.py
 │       │   ├── package_service.py # High-level install/remove/search
@@ -60,15 +60,16 @@ ArchHubQt/
 ## Design principles
 
 - **Modular backends**: Each package manager (pacman, paru, future helpers) lives in `backends/` and implements a common interface from `base.py`. Adding a helper = add one module and register it; no branching in UI or services.
-- **Testability**: Business logic lives in `core/` and `services/`; parsers and runners are pure or use dependency injection. Unit tests under `tests/unit/` mirror the package layout. No Qt/QML in core.
-- **Readability**: Clear layers: UI (QML) → services → backends → core (runner, models, parsing). One responsibility per package.
-- **AUR packaging**: `src` layout keeps the installable package under `src/archhub/`. PKGBUILD installs from source (or wheel) into `/usr`, puts QML under `/usr/share/archhub/qml`, and runs `archhub` via console script from `pyproject.toml`.
+- **Testability**: Business logic lives in `core/` and `services/`; parsers and runners are pure or use dependency injection. Unit tests under `tests/unit/` mirror the package layout. No Qt in core.
+- **Readability**: Clear layers: UI (QtWidgets) → view-model/controller → services → backends → core (runner, models, parsing). One responsibility per package.
+- **AUR packaging**: `src` layout keeps the installable package under `src/archhub/`. PKGBUILD installs from source (or wheel) into `/usr` and runs `archhub` via console script from `pyproject.toml`.
 
 ## Where to put what
 
 | Concern | Location |
 |--------|----------|
-| QML views, components, pages | `src/archhub/ui/qml/` |
+| QtWidgets pages, main window, reusable widgets | `src/archhub/ui/` (pages/, widgets/) |
+| View-models, controllers, async UI loader | `src/archhub/app/` |
 | High-level install/remove/search, job state | `src/archhub/services/` |
 | Pacman / paru / other helper implementations | `src/archhub/backends/` |
 | Subprocess runner, Pydantic models, output parsers | `src/archhub/core/` |
@@ -81,10 +82,10 @@ ArchHubQt/
 2. Add parsers under `src/archhub/core/parsing/<helper>.py` if output format differs.
 3. Register the backend in `backends/__init__.py` (or a small registry module).
 4. Add unit tests in `tests/unit/backends/` and `tests/unit/core/parsing/`.
-5. No changes required in services or QML beyond optional UI to choose helper.
+5. No changes required in services or QtWidgets UI beyond optional UI to choose helper.
 
 ## AUR packaging notes
 
 - Use `pyproject.toml` for dependencies and `[project.scripts]` so the AUR package can call `archhub` after installing the package.
 - PKGBUILD should depend on `python-pyside6` (or chosen Qt binding) and optional helpers (e.g. `paru`) as optional/makedepends or mention them in the package description.
-- Install QML and assets to a single prefix (e.g. `/usr/share/archhub/`) and have the app load QML from that path so it works when installed system-wide.
+- The QtWidgets UI is pure Python and is installed with the package under `/usr`; no separate asset path is required.

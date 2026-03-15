@@ -1,0 +1,15 @@
+---
+description: QtWidgets UI standards for package manager views and interaction flows
+globs: src/archhub/ui/**/*.py, src/archhub/app/**/*.py
+alwaysApply: false
+---
+
+# QtWidgets Rules
+
+- Keep widgets focused on presentation and interaction. Do not put package-manager business logic or command construction in UI code; use the view-model and `UiLoader` (worker thread) for data loading.
+- Bind widgets to view-model properties, signals, and slots. Prefer unidirectional flow: user action → view-model request signal → loader (worker) → result signal → view-model updates models → widgets reflect state.
+- Represent package operations with explicit states (idle, loading, success, failed). Show progress, disable conflicting actions, and make cancellation/retry paths obvious.
+- Surface risky actions clearly (remove, downgrade, orphan cleanup, cache cleanup, AUR install). Require explicit user confirmation before destructive operations.
+- Keep reusable UI pieces modular: main window, sidebar, package list, details pane, and page widgets under `ui/pages/` and `ui/widgets/`.
+- Do not call services or backends directly from widget code; always go through the view-model and async loader so the UI thread never blocks on package data.
+- When adding new screens, preserve the distinction between repo and AUR packages and use the existing controller/repository layer for loading.
