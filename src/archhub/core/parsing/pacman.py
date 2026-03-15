@@ -111,19 +111,52 @@ def parse_details(stdout: str, source: PackageSource = PackageSource.REPO) -> Op
     if not fields.get("Name"):
         return None
 
-    def _size(s: str) -> int:
-        try:
-            return int(s)
-        except (ValueError, TypeError):
+    def _parse_installed_size(s: str) -> int:
+        """Parse '6.25 MiB', '123 KiB', '456 B' etc. into bytes."""
+        if not s or s == "None":
             return 0
+        s = s.strip()
+        try:
+            parts = s.split(None, 1)
+            num_str = parts[0].replace(",", ".")
+            num = float(num_str)
+            if len(parts) == 1:
+                return int(num)
+            unit = (parts[1] or "").strip().upper()
+            if unit.startswith("KIB"):
+                return int(num * 1024)
+            if unit.startswith("MIB"):
+                return int(num * 1024 * 1024)
+            if unit.startswith("GIB"):
+                return int(num * 1024 * 1024 * 1024)
+            if unit.startswith("KB"):
+                return int(num * 1000)
+            if unit.startswith("MB"):
+                return int(num * 1000 * 1000)
+            if unit.startswith("GB"):
+                return int(num * 1000 * 1000 * 1000)
+            return int(num)
+        except (ValueError, TypeError, IndexError):
+            return 0
+
+    raw_size = fields.get("Installed Size", fields.get("InstalledSize", "0"))
+    install_size = _parse_installed_size(raw_size)
+
+    last_updated = (
+        fields.get("Build Date")
+        or fields.get("BuildDate")
+        or fields.get("Install Date")
+        or fields.get("InstallDate")
+        or None
+    )
 
     return PackageDetails(
         name=fields.get("Name", ""),
         version=fields.get("Version", ""),
         source=source,
         description=fields.get("Description", ""),
-        install_size=_size(fields.get("Installed Size", fields.get("InstalledSize", "0"))),
-        last_updated=fields.get("BuildDate") or fields.get("InstallDate") or None,
+        install_size=install_size,
+        last_updated=last_updated,
         maintainer=fields.get("Packager") or None,
         dependencies=_split_deps(fields.get("Depends On", fields.get("DependsOn", ""))),
         optional_deps=_split_deps(fields.get("Optional Deps", fields.get("OptionalDepends", ""))),

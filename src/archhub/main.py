@@ -13,6 +13,8 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from archhub.app.viewmodel import AppViewModel
 from archhub.backends import BackendRegistry
+from archhub.core.cache_db import cache_session, create_cache_engine, init_cache_tables
+from archhub.core.cache_repository import CacheRepository
 
 
 def _qml_dir() -> Path:
@@ -64,8 +66,15 @@ def main() -> None:
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(qml_dir))
 
+    cache_engine = create_cache_engine()
+    init_cache_tables(cache_engine)
+
+    def session_factory():
+        return cache_session(cache_engine)
+
+    cache_repo = CacheRepository(session_factory)
     registry = BackendRegistry()
-    view_model = AppViewModel(registry)
+    view_model = AppViewModel(registry, cache_repo=cache_repo)
     engine.rootContext().setContextProperty("appModel", view_model)
     # Expose models directly so QML ListView can use them (nested Property can be unreliable)
     engine.rootContext().setContextProperty("packageModel", view_model.getPackageModel())

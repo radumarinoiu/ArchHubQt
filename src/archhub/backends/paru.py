@@ -34,8 +34,6 @@ class ParuBackend(AurHelperBackend):
 
     @log_duration()
     def get_aur_installed(self) -> List[PackageSummary]:
-        if not self.is_available():
-            return []
         r = run([self.BINARY, "-Qm"], options=self._opts)
         if not r.success:
             return []
@@ -43,8 +41,6 @@ class ParuBackend(AurHelperBackend):
 
     @log_duration()
     def get_all_updates(self) -> List[UpdateEntry]:
-        if not self.is_available():
-            return []
         r = run([self.BINARY, "-Qu"], options=self._opts)
         if not r.success:
             return []
@@ -52,17 +48,14 @@ class ParuBackend(AurHelperBackend):
 
     @log_duration()
     def search_aur(self, query: str) -> List[PackageSummary]:
-        if not self.is_available() or not query.strip():
-            return []
         r = run([self.BINARY, "-Ss", query.strip()], options=self._opts)
         if not r.success:
+            print(r.stderr)
             return []
         return paru_parsing.parse_aur_search(r.stdout)
 
     @log_duration()
     def get_package_details(self, name: str) -> Optional[PackageDetails]:
-        if not self.is_available():
-            return None
         r = run([self.BINARY, "-Qi", name], options=self._opts)
         if not r.success:
             return None

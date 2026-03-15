@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 from PySide6.QtCore import QAbstractListModel, QObject, QModelIndex, Qt, Signal, Property, Slot
 
 from archhub.backends import BackendRegistry
+from archhub.core.cache_repository import CacheRepository
 from archhub.core.models import (
     CacheStats,
     OrphanEntry,
@@ -168,11 +169,18 @@ class StringListModel(QAbstractListModel):
 class AppViewModel(QObject):
     """Main view-model: sidebar counters, package/updates/orphans models, settings."""
 
-    def __init__(self, registry: BackendRegistry, parent: Optional[QObject] = None):
+    def __init__(
+        self,
+        registry: BackendRegistry,
+        parent: Optional[QObject] = None,
+        *,
+        cache_repo: Optional[CacheRepository] = None,
+    ):
         super().__init__(parent)
         self._registry = registry
-        self._package_service = PackageService(registry)
-        self._updates_service = UpdatesService(registry)
+        self._cache_repo = cache_repo
+        self._package_service = PackageService(registry, cache_repo=cache_repo)
+        self._updates_service = UpdatesService(registry, cache_repo=cache_repo)
         self._maintenance_service = MaintenanceService(registry)
         self._settings_service = SettingsService(registry)
 
@@ -189,6 +197,7 @@ class AppViewModel(QObject):
         self._updates_include_aur = False
         self._selected_package_name: str = ""
         self._package_details: Optional[PackageDetails] = None
+        self._selection_stack: List[str] = []  # history for Back when navigating via dependencies
         self._cache_stats = CacheStats()
         self._loading = False
         self._error_message: str = ""
@@ -279,6 +288,7 @@ class AppViewModel(QObject):
         return self._selected_package_name
 
     def setSelectedPackageName(self, value: str) -> None:
+        """Set selected package (e.g. from list). Does not push onto back stack."""
         if self._selected_package_name != value:
             self._selected_package_name = value
             self.selectedPackageNameChanged.emit()
@@ -289,27 +299,51 @@ class AppViewModel(QObject):
         str, getSelectedPackageName, setSelectedPackageName, notify=selectedPackageNameChanged
     )
 
-    @Slot(result=str)
+    # --- Back navigation (only when opening a dependency from the details pane) ---
+    def getCanGoBack(self) -> bool:
+        return len(self._selection_stack) > 0
+
+    canGoBackChanged = Signal()
+    canGoBack = Property(bool, getCanGoBack, notify=canGoBackChanged)
+
+    @Slot(str)
+    def navigateToPackage(self, name: str) -> None:
+        """Select a package from the details pane (e.g. clicked a dependency). Pushes current onto back stack."""
+        if not name or name == self._selected_package_name:
+            return
+        if self._selected_package_name:
+            self._selection_stack.append(self._selected_package_name)
+            self.canGoBackChanged.emit()
+        self._selected_package_name = name
+        self.selectedPackageNameChanged.emit()
+        self._loadPackageDetails(name)
+
+    @Slot()
+    def goBack(self) -> None:
+        """Go back to the previous package in selection history (after clicking a dependency)."""
+        if not self._selection_stack:
+            return
+        prev = self._selection_stack.pop()
+        self.canGoBackChanged.emit()
+        self._selected_package_name = prev
+        self.selectedPackageNameChanged.emit()
+        self._loadPackageDetails(prev)
+
     def getPackageDetailsName(self) -> str:
         return self._package_details.name if self._package_details else ""
 
-    @Slot(result=str)
     def getPackageDetailsVersion(self) -> str:
         return self._package_details.version if self._package_details else ""
 
-    @Slot(result=str)
     def getPackageDetailsDescription(self) -> str:
         return self._package_details.description if self._package_details else ""
 
-    @Slot(result=int)
     def getPackageDetailsInstallSize(self) -> int:
         return self._package_details.install_size if self._package_details else 0
 
-    @Slot(result=str)
     def getPackageDetailsLastUpdated(self) -> str:
         return self._package_details.last_updated or "" if self._package_details else ""
 
-    @Slot(result=str)
     def getPackageDetailsMaintainer(self) -> str:
         return self._package_details.maintainer or "" if self._package_details else ""
 
@@ -331,6 +365,25 @@ class AppViewModel(QObject):
     packageDetailsDependenciesChanged = Signal()
     packageDetailsOptionalDepsChanged = Signal()
     packageDetailsConflictsChanged = Signal()
+
+    packageDetailsName = Property(
+        str, getPackageDetailsName, notify=packageDetailsNameChanged
+    )
+    packageDetailsVersion = Property(
+        str, getPackageDetailsVersion, notify=packageDetailsVersionChanged
+    )
+    packageDetailsDescription = Property(
+        str, getPackageDetailsDescription, notify=packageDetailsDescriptionChanged
+    )
+    packageDetailsInstallSize = Property(
+        int, getPackageDetailsInstallSize, notify=packageDetailsInstallSizeChanged
+    )
+    packageDetailsLastUpdated = Property(
+        str, getPackageDetailsLastUpdated, notify=packageDetailsLastUpdatedChanged
+    )
+    packageDetailsMaintainer = Property(
+        str, getPackageDetailsMaintainer, notify=packageDetailsMaintainerChanged
+    )
 
     def _emitDetailsChanged(self) -> None:
         self.packageDetailsNameChanged.emit()
@@ -489,6 +542,19 @@ class AppViewModel(QObject):
             self._package_model.setPackages([])
         finally:
             self.setLoading(False)
+
+    @Slot()
+    def refreshInstalledCache(self) -> None:
+        """Invalidate installed-package and updates cache, then refresh lists (e.g. bound to F5)."""
+        self._package_service.refresh_installed_cache()
+        if self._cache_repo:
+            self._cache_repo.invalidate_updates(self._registry.repo().id)
+            aur = self._registry.get_enabled_aur_helper()
+            if aur:
+                self._cache_repo.invalidate_updates(aur.id)
+        self.refreshPackageList()
+        self.refreshUpdatesList()
+        self.refreshCounts()
 
     @Slot()
     def refreshUpdatesList(self) -> None:

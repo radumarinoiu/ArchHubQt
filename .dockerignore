@@ -1,0 +1,14 @@
+# Local venv is platform-specific; uv creates it in the image
+.venv
+# Git and IDE
+.git
+.cursor
+*.pyc
+__pycache__
+.pytest_cache
+.coverage
+htmlcov
+# Docker
+Dockerfile
+docker-compose.yaml
+.dockerignore

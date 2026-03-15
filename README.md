@@ -81,9 +81,14 @@ Arch Linux package manager GUI (Qt/QML) with pacman and AUR helper support.
    pytest tests/unit -v
    ```
 
-### Project layout
+### Package cache (SQLite)
 
-See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for directory layout and where to add code.
+Installed package lists and details, plus search results, are cached in a local SQLite database so repeat views are fast.
+
+- **Location**: `$XDG_CACHE_HOME/archhub/cache.db` (or `~/.cache/archhub/cache.db` if `XDG_CACHE_HOME` is not set). The cache is disposable; you can delete the file to start fresh.
+- **Cached data**: Installed package lists, package details, **updates** (repo and AUR), and search results (see below).
+- **Refresh (F5)**: Press **F5** to invalidate the installed-package and updates cache, then refetch. Use this after installing, removing, or upgrading packages outside the app.
+- **Search**: Search results are cached for **1 minute**; after that, the next search for the same query refetches from the backends.
 
 ### AUR packaging
 

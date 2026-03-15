@@ -91,6 +91,25 @@ Conflicts With  : conflict
     assert "conflict" in r.conflicts
 
 
+def test_parse_details_installed_size_mib():
+    """Installed Size with human-readable '6.25 MiB' is parsed to bytes."""
+    out = """Name            : pkg
+Version         : 1.0-1
+Description     : Desc
+Installed Size  : 6.25 MiB
+Build Date      : Mon 01 Jan 2024 12:00:00
+Packager        : Dev <dev@arch.org>
+Depends On      :
+Optional Deps   : None
+Conflicts With  : None
+"""
+    r = pacman_parsing.parse_details(out)
+    assert r is not None
+    assert r.install_size == 6553600  # 6.25 * 1024 * 1024
+    assert r.last_updated == "Mon 01 Jan 2024 12:00:00"
+    assert r.maintainer == "Dev <dev@arch.org>"
+
+
 def test_parse_cache_stats_empty():
     s = pacman_parsing.parse_cache_stats("")
     assert s.total_size_bytes == 0

@@ -72,6 +72,14 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "F5"
+        onActivated: {
+            if (appModel)
+                appModel.refreshInstalledCache()
+        }
+    }
+
     Component.onCompleted: {
         if (appModel) {
             appModel.refreshAll()

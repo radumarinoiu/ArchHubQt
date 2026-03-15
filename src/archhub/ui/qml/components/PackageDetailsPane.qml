@@ -10,8 +10,21 @@ Pane {
         anchors.fill: parent
         spacing: 8
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Button {
+                text: qsTr("← Back")
+                visible: appModel && appModel.canGoBack
+                onClicked: {
+                    if (appModel)
+                        appModel.goBack()
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
         Label {
-            text: appModel ? appModel.getPackageDetailsName() : ""
+            text: appModel ? appModel.packageDetailsName : ""
             font.pixelSize: 16
             font.bold: true
         }
@@ -20,16 +33,16 @@ Pane {
             rowSpacing: 4
             columnSpacing: 12
             Label { text: qsTr("Version:") }
-            Label { text: appModel ? appModel.getPackageDetailsVersion() : "" }
+            Label { text: appModel ? appModel.packageDetailsVersion : "" }
             Label { text: qsTr("Install size:") }
-            Label { text: appModel ? formatSize(appModel.getPackageDetailsInstallSize()) : "" }
+            Label { text: appModel ? formatSize(appModel.packageDetailsInstallSize) : "" }
             Label { text: qsTr("Last updated:") }
-            Label { text: appModel ? appModel.getPackageDetailsLastUpdated() : "" }
+            Label { text: appModel ? appModel.packageDetailsLastUpdated : "" }
             Label { text: qsTr("Maintainer:") }
-            Label { text: appModel ? appModel.getPackageDetailsMaintainer() : "" }
+            Label { text: appModel ? appModel.packageDetailsMaintainer : "" }
         }
         Label {
-            text: appModel ? appModel.getPackageDetailsDescription() : ""
+            text: appModel ? appModel.packageDetailsDescription : ""
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -48,7 +61,7 @@ Pane {
             currentIndex: tabBar.currentIndex
             ScrollView {
                 Label {
-                    text: appModel ? appModel.getPackageDetailsDescription() : ""
+                    text: appModel ? appModel.packageDetailsDescription : ""
                     wrapMode: Text.WordWrap
                     width: parent.width - 20
                 }
@@ -58,7 +71,7 @@ Pane {
                 delegate: ItemDelegate {
                     width: ListView.view ? ListView.view.width - 4 : 200
                     text: model.text
-                    onClicked: appModel.selectedPackageName = model.text
+                    onClicked: appModel.navigateToPackage(model.text)
                 }
             }
             ListView {
@@ -66,7 +79,7 @@ Pane {
                 delegate: ItemDelegate {
                     width: ListView.view ? ListView.view.width - 4 : 200
                     text: model.text
-                    onClicked: appModel.selectedPackageName = model.text
+                    onClicked: appModel.navigateToPackage(model.text)
                 }
             }
             ListView {

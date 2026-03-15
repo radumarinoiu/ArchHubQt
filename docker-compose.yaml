@@ -1,0 +1,14 @@
+# CLI-only testing on Arch Linux (no GUI).
+# Build: docker compose build
+# Run shell: docker compose run archhub bash
+# Run CLI:   docker compose run archhub  (or: docker compose run archhub uv run python -m archhub.cli)
+services:
+  archhub:
+    build: .
+    image: archhub-cli:local
+    working_dir: /app
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    command: ["uv", "run", "python", "-m", "archhub.cli"]
