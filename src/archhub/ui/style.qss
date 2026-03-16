@@ -1,0 +1,56 @@
+.HSeparatorWidget {
+    background-color: palette(midlight);
+}
+
+.VSeparatorWidget {
+    background-color: palette(midlight);
+}
+
+.SquareIndicatorWidget { 
+    margin: 8px 4px;
+    padding: 8px;
+    background-color: palette(window);
+    border: 1px solid palette(midlight);
+    border-radius: 8px; 
+}
+
+.SquareIndicatorWidget > .LabelWidget#value-label {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.SquareIndicatorWidget > .LabelWidget#title-label {
+    font-size: 12px;
+}
+
+.PageButtonWidget { 
+    font-size: 18px;
+    text-align: left;
+    margin: 4px;
+    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.PageButtonWidget:pressed, .PageButtonWidget:checked {
+    border: 1px solid palette(midlight); 
+    border-radius: 8px;
+    background-color: palette(midlight);
+}
+
+
+.SubPageButtonWidget { 
+    font-size: 16px;
+    text-align: left;
+    margin: 2px;
+    margin-left: 16px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.SubPageButtonWidget:pressed, .SubPageButtonWidget:checked {
+    border: 1px solid palette(midlight);
+    border-radius: 8px;
+    background-color: palette(midlight);
+}

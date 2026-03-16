@@ -254,7 +254,7 @@ class AppViewModel(QObject):
         self.requestLoadUpdates.connect(self._loader.load_updates, queued)
         self.requestLoadOrphans.connect(self._loader.load_orphans, queued)
         self.requestLoadCounts.connect(self._loader.load_counts, queued)
-        self.requestCacheStats.connect(self._loader.load_cache_stats, queued)
+        # self.requestCacheStats.connect(self._loader.load_cache_stats, queued)
         self.destroyed.connect(self._on_destroyed)
 
     def _on_destroyed(self) -> None:
